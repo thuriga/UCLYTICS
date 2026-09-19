@@ -154,3 +154,5 @@ display_games.columns = ["Date", "Opponent", "Venue", "Score", "Result", "For", 
 st.dataframe(display_games, use_container_width=True, hide_index=True, column_config={"Result": st.column_config.TextColumn(width="small"), "Score": st.column_config.TextColumn(width="small")})
 
 st.caption("Strength index blends win rate, scoring rate, and points efficiency. It is directional, not an official UEFA rating.")
+
+streamlit run app.py
