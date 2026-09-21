@@ -98,6 +98,20 @@ def simulate_tournament(
     champions = {team: 0 for team in teams}
     finalists = {team: 0 for team in teams}
 
+    # Precompute matchup rates once. The same teams can meet many times
+    # across simulations, so recalculating them inside every match is wasteful.
+    matchup_rates = {}
+    for index, team_a in enumerate(teams):
+        for team_b in teams[index + 1:]:
+            matchup_rates[(team_a, team_b)] = poisson_rates(
+                team_a, team_b, matches, ratings, neutral
+            )
+
+    def get_rates(team_a, team_b):
+        if (team_a, team_b) in matchup_rates:
+            return matchup_rates[(team_a, team_b)]
+        return matchup_rates[(team_b, team_a)][::-1]
+
     for _ in range(simulations):
         field = list(teams)
         rng.shuffle(field)
@@ -107,9 +121,7 @@ def simulate_tournament(
 
             for index in range(0, len(field), 2):
                 team_a, team_b = field[index], field[index + 1]
-                a_rate, b_rate = poisson_rates(
-                    team_a, team_b, matches, ratings, neutral
-                )
+                a_rate, b_rate = get_rates(team_a, team_b)
                 a_goals = rng.poisson(a_rate)
                 b_goals = rng.poisson(b_rate)
 
