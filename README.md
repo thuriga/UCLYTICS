@@ -58,6 +58,10 @@ UCLYTICS/
 
 The refactor keeps the UI layer thin and makes the core logic reusable and testable.
 
+## Data source
+
+The bundled `data.csv` contains all 189 matches from the 2025/26 UEFA Champions League competition proper, covering the 36-team league phase, knockout play-offs and knockout phase. Results were sourced from OpenFootball's public-domain 2025/26 Champions League dataset and checked against UEFA's season statistics, which report 189 matches and 655 goals.
+
 ## Testing
 
 The test suite covers:
