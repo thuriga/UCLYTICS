@@ -382,93 +382,107 @@ with left:
 
     recent_results = games["Result"].tolist()[-8:]
 
-    form_html = '<div style="display:flex; gap:8px; margin:12px 0 20px 0;">'
+    # Display W/D/L as simple coloured badges
+    badges = ""
 
     for result in recent_results:
 
         if result == "W":
             bg = "#d9f36a"
-            text = "#111"
+            text = "#111111"
+
         elif result == "D":
             bg = "#747c7b"
-            text = "#fff"
+            text = "#ffffff"
+
         else:
             bg = "#ff836d"
-            text = "#111"
+            text = "#111111"
 
-        form_html += f"""
-        <div style="
-            width:34px;
-            height:34px;
+        badges += f"""
+        <span style="
+            display:inline-flex;
+            align-items:center;
+            justify-content:center;
+            width:32px;
+            height:32px;
             border-radius:50%;
             background:{bg};
             color:{text};
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            font-family:'DM Mono', monospace;
-            font-weight:500;
-            font-size:0.75rem;
-        ">
-            {result}
-        </div>
+            font-family:monospace;
+            font-weight:600;
+            font-size:13px;
+            margin-right:6px;
+        ">{result}</span>
         """
 
-    form_html += "</div>"
-
     st.markdown(
-        form_html,
+        badges,
         unsafe_allow_html=True
     )
 
     st.caption("Last 8 matches")
+
+    # -----------------------------
+    # GOALS CHART
+    # -----------------------------
 
     chart_data = games[
         ["Date", "Goals For", "Goals Against"]
     ].tail(8).copy()
 
     chart_data.columns = [
+        "Date",
         "Goals scored",
         "Goals conceded"
     ]
 
     fig = px.line(
         chart_data,
-        x=chart_data.index,
+        x="Date",
         y=["Goals scored", "Goals conceded"],
         markers=True
     )
 
+    fig.update_traces(line=dict(width=3))
+
     fig.update_layout(
         height=320,
-        margin=dict(l=10, r=10, t=20, b=10),
+        margin=dict(
+            l=10,
+            r=10,
+            t=20,
+            b=10
+        ),
         paper_bgcolor="#151c1d",
         plot_bgcolor="#151c1d",
         font_color="#f5f5f0",
         legend_title=None
     )
 
-    fig.update_traces(
-        line=dict(width=3)
-    )
-
     fig.update_xaxes(
         showgrid=False,
         title=None,
-        tickfont=dict(color="#a5adaa")
+        tickfont=dict(
+            color="#a5adaa"
+        )
     )
 
     fig.update_yaxes(
         showgrid=True,
         gridcolor="#354041",
         title=None,
-        tickfont=dict(color="#a5adaa")
+        tickfont=dict(
+            color="#a5adaa"
+        )
     )
 
     st.plotly_chart(
         fig,
         use_container_width=True,
-        config={"displayModeBar": False}
+        config={
+            "displayModeBar": False
+        }
     )
 
 
@@ -479,7 +493,10 @@ with right:
     result_counts = (
         games["Result"]
         .value_counts()
-        .reindex(["W", "D", "L"], fill_value=0)
+        .reindex(
+            ["W", "D", "L"],
+            fill_value=0
+        )
         .reset_index()
     )
 
@@ -503,7 +520,12 @@ with right:
 
     fig.update_layout(
         height=320,
-        margin=dict(l=10, r=10, t=20, b=10),
+        margin=dict(
+            l=10,
+            r=10,
+            t=20,
+            b=10
+        ),
         paper_bgcolor="#151c1d",
         plot_bgcolor="#151c1d",
         font_color="#f5f5f0",
@@ -521,16 +543,12 @@ with right:
         title=None
     )
 
-    fig.update_traces(
-        textfont=dict(
-            color="#f5f5f0"
-        )
-    )
-
     st.plotly_chart(
         fig,
         use_container_width=True,
-        config={"displayModeBar": False}
+        config={
+            "displayModeBar": False
+        }
     )
 
 st.markdown("## Compare teams")
