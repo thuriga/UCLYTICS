@@ -1,157 +1,186 @@
-# UCLYTICS
-# ⚽ UCLytics
+# UCLytics
 
-### Champions League Football Intelligence Platform
+### Champions League Team Intelligence Platform
 
-UCLytics is an interactive football analytics platform that transforms UEFA Champions League match data into team intelligence, power rankings, team comparisons and tournament simulations.
+UCLytics is an interactive football analytics application built with **Python, Pandas, NumPy, Plotly and Streamlit**.
 
-The goal is to make football data easier to explore while experimenting with statistical modelling and product design.
+It turns match results into an exploratory product for understanding team performance, comparing clubs, inspecting form and testing simulated knockout scenarios.
 
----
+> **Project goal:** turn raw football match data into a clear, interactive analytical experience.
 
-## 🚀 Features
+## What it does
 
-### 📊 Dashboard
+### Team Scout
+For a selected club, UCLytics calculates:
+- Wins, draws and losses
+- Points and points per game
+- Goals scored and conceded
+- Goal difference
+- Clean sheets and BTTS
+- Home and away records
+- Recent form
 
-Get an overview of the Champions League dataset including matches, teams and goals.
+### Elo ratings
+Every team starts at **1500 Elo**. Ratings are updated chronologically after each match using:
+- Expected result
+- Actual result
+- Home advantage
+- A goal-margin adjustment
 
-### 🏆 Power Rankings
+This creates a lightweight rating system that updates as new matches are added.
 
-Rank teams using a combination of:
+### Strength Index
+The 0–100 UCLytics Strength Index is a transparent composite indicator:
 
-* Elo rating
-* Win rate
-* Points efficiency
-* Goals scored
-* Goals conceded
-* Goal difference
+| Component | Weight |
+|---|---:|
+| Points efficiency | 40% |
+| Goals per game | 25% |
+| Defensive performance | 20% |
+| Elo | 15% |
 
-### 🔍 Team Scout
+The index is an analytical measure, not an official UEFA rating.
 
-Explore an individual team's:
+### Power Rankings
+Power Rankings combine Elo, points efficiency and goal difference into a single exploratory score. The ranking is intended to make the underlying match data easier to compare rather than represent an official competition ranking.
 
-* Strength score
-* Elo rating
-* Win rate
-* Attacking performance
-* Defensive performance
-* Recent form
-* Match history
+### Team comparison
+Two clubs can be compared across:
+- Win rate
+- Goals per match
+- Points per match
+- Clean-sheet rate
+- Strength Index
 
-### ⚔️ Team Comparison
+### Tournament simulation
+The tournament simulator now uses **Poisson-distributed goals** rather than selecting winners directly from Elo.
 
-Compare two teams across key performance metrics.
+For each simulated match:
+1. Attack and defensive scoring rates are estimated from the available match data.
+2. A small Elo adjustment incorporates relative team strength.
+3. Expected goals are sampled from Poisson distributions.
+4. Draws are resolved using an Elo-based approximation for extra time/penalties.
+5. The process is repeated across thousands of knockout tournaments.
 
-### 🎲 Tournament Simulator
+The app reports simulated **champion** and **final** frequencies.
 
-Run thousands of simulated 8-team knockout tournaments using:
+Because the current dataset is limited, these simulations should be treated as an exploration of the model rather than forecasts of real-world tournament outcomes.
 
-* Elo ratings
-* Expected scoring rates
-* Poisson-distributed goals
+## Project architecture
 
-The simulator produces estimated championship frequencies across repeated simulations.
-
----
-
-## 🧠 Methodology
-
-### Elo Rating
-
-Each team starts with an initial rating.
-
-After every match, ratings are updated according to the difference between the expected and actual result.
-
-### UCLytics Strength Score
-
-The custom strength score combines:
-
-* Points efficiency
-* Win rate
-* Goals per game
-* Goals conceded per game
-* Goal difference
-
-The score is intended as an analytical indicator rather than an official UEFA rating.
-
-### Tournament Simulation
-
-The simulator converts relative team strength into approximate scoring rates and generates match scores using a Poisson distribution.
-
-Thousands of tournaments can then be simulated to examine how frequently each selected team wins the simulated competition.
-
----
-
-## 🛠 Tech Stack
-
-* Python
-* Pandas
-* NumPy
-* Plotly
-* Streamlit
-
----
-
-## 📁 Project Structure
+The application has been refactored so that the Streamlit interface is separated from the analytical logic:
 
 ```text
 UCLYTICS/
-│
 ├── app.py
 ├── data.csv
+├── src/
+│   ├── __init__.py
+│   ├── data.py
+│   ├── analytics.py
+│   └── models.py
+├── tests/
+│   ├── test_analytics.py
+│   └── test_models.py
 ├── requirements.txt
-├── README.md
-└── .devcontainer/
+└── README.md
 ```
 
----
+### Why the refactor?
 
-## ▶️ Run Locally
+Previously, data loading, team statistics, Elo calculations and simulation logic lived inside `app.py`.
 
-Install the dependencies:
+The refactor separates these responsibilities:
+- `src/data.py` — data loading and cleaning
+- `src/analytics.py` — team-level metrics and Strength Index
+- `src/models.py` — Elo, Power Rankings and simulation
+- `app.py` — Streamlit presentation layer
+- `tests/` — automated checks for the analytical logic
+
+This makes the project easier to test, maintain and extend.
+
+## Testing
+
+The project includes unit tests for:
+- Match-level result and points calculations
+- Team summary metrics
+- Strength Index bounds
+- Deterministic Elo calculations
+- Match simulation probability totals
+- Tournament input validation
+- Tournament probability totals
+
+Run:
 
 ```bash
 pip install -r requirements.txt
+pytest
 ```
 
-Run the application:
+## Run locally
+
+Clone the repository and install dependencies:
+
+```bash
+git clone https://github.com/thuriga/UCLYTICS.git
+cd UCLYTICS
+pip install -r requirements.txt
+```
+
+Start the Streamlit application:
 
 ```bash
 streamlit run app.py
 ```
 
----
+## Tech stack
 
-## 🗺 Roadmap
+- **Python** — application and modelling
+- **Pandas** — data preparation and analysis
+- **NumPy** — numerical calculations and simulation
+- **Plotly** — interactive visualisation
+- **Streamlit** — web application interface
+- **Pytest** — automated testing
 
-* [x] Initial Streamlit dashboard
-* [x] Team statistics
-* [x] Team comparison
-* [x] Team Scout
-* [x] Power Rankings
-* [x] Elo ratings
-* [x] Tournament simulator
-* [ ] Complete 2025/26 match dataset
-* [ ] Public deployment
-* [ ] Interactive match explorer
-* [ ] 2026/27 data updates
-* [ ] Improved rating model
-* [ ] Player-level analytics
+## Data and limitations
 
----
+The application operates on the match data included in `data.csv`.
 
-## 🎯 Project Motivation
+The current dataset is intentionally treated as a project dataset rather than a complete historical database. Results, ratings and simulation outputs are therefore sensitive to:
+- Dataset coverage
+- Sample size
+- Team strength assumptions
+- The Elo parameters
+- The Poisson rate estimation method
 
-Football produces enormous amounts of data, but raw match statistics can be difficult to interpret.
+The model does not include player availability, injuries, line-ups, transfers, tactical changes or other information that can affect real matches.
 
-UCLytics explores how data can be transformed into a simple product that helps users understand team performance, compare clubs and experiment with different tournament scenarios.
+## What I learned
 
-The project combines data engineering, analytics, statistical modelling, visualisation and product design.
+This project was built to explore the full path from **data → model → product**.
 
----
+Key technical areas include:
+- Cleaning inconsistent CSV data
+- Designing reusable Python functions
+- Building a chronological Elo rating system
+- Combining multiple metrics into a transparent index
+- Simulating outcomes with probability distributions
+- Building interactive visualisations
+- Separating application code from analytical logic
+- Writing automated tests for data and modelling functions
 
-## ⚠️ Disclaimer
+## Future improvements
+
+- Add a reproducible data-ingestion pipeline
+- Expand and validate the match dataset
+- Add interactive match-level exploration
+- Improve expected-goals estimation
+- Add confidence/uncertainty information to model outputs
+- Add player-level analytics
+- Deploy the application publicly
+
+## Disclaimer
 
 UCLytics is an independent data-analysis project.
 
-Ratings and simulations are model outputs and are not official UEFA rankings or predictions of actual tournament results.
+Its ratings, rankings and simulations are model outputs for exploration and should not be interpreted as official UEFA ratings or predictions of actual tournament results.
