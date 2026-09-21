@@ -28,108 +28,6 @@ def load_matches():
     return data.dropna(subset=["Date"]).sort_values("Date").reset_index(drop=True)
 
 
-def team_matches(matches, team):
-    home = matches[matches["Home Team"] == team].copy()
-    home["Opponent"], home["Venue"] = home["Away Team"], "Home"
-    home["Goals For"], home["Goals Against"] = home["Home Goals"], home["Away Goals"]
-    away = matches[matches["Away Team"] == team].copy()
-    away["Opponent"], away["Venue"] = away["Home Team"], "Away"
-    away["Goals For"], away["Goals Against"] = away["Away Goals"], away["Home Goals"]
-    games = pd.concat([home, away]).sort_values("Date").reset_index(drop=True)
-    games["Result"] = np.select(
-        [games["Goals For"] > games["Goals Against"], games["Goals For"] < games["Goals Against"]],
-        ["W", "L"],
-        default="D",
-    )
-    games["Points"] = games["Result"].map({"W": 3, "D": 1, "L": 0})
-    games["Clean Sheet"] = games["Goals Against"].eq(0)
-    games["BTTS"] = games["Goals For"].gt(0) & games["Goals Against"].gt(0)
-    return games
-
-
-def team_summary(matches, team):
-    games = team_matches(matches, team)
-    played = len(games)
-    wins, draws, losses = [(games["Result"] == result).sum() for result in ["W", "D", "L"]]
-    gf, ga = int(games["Goals For"].sum()), int(games["Goals Against"].sum())
-    points = int(games["Points"].sum())
-    return {
-        "played": played, "wins": int(wins), "draws": int(draws), "losses": int(losses),
-        "goals_for": gf, "goals_against": ga, "goal_diff": gf - ga, "points": points,
-        "points_per_game": points / played if played else 0,
-        "win_rate": wins / played * 100 if played else 0,
-        "goals_per_game": gf / played if played else 0,
-        "conceded_per_game": ga / played if played else 0,
-        "clean_sheets": int(games["Clean Sheet"].sum()),
-        "btts": int(games["BTTS"].sum()),
-        "home_record": f"{(games[games['Venue'] == 'Home']['Result'] == 'W').sum()}W {(games[games['Venue'] == 'Home']['Result'] == 'D').sum()}D {(games[games['Venue'] == 'Home']['Result'] == 'L').sum()}L",
-        "away_record": f"{(games[games['Venue'] == 'Away']['Result'] == 'W').sum()}W {(games[games['Venue'] == 'Away']['Result'] == 'D').sum()}D {(games[games['Venue'] == 'Away']['Result'] == 'L').sum()}L",
-    }
-
-
-def elo_ratings(matches, k_factor=24, home_advantage=55):
-    teams = sorted(set(matches["Home Team"]).union(matches["Away Team"]))
-    ratings = {team: 1500.0 for team in teams}
-    history = []
-    for _, match in matches.sort_values("Date").iterrows():
-        home, away = match["Home Team"], match["Away Team"]
-        before = dict(ratings)
-        expected_home = 1 / (1 + 10 ** ((ratings[away] - (ratings[home] + home_advantage)) / 400))
-        actual_home = 1 if match["Home Goals"] > match["Away Goals"] else 0 if match["Home Goals"] < match["Away Goals"] else 0.5
-        margin = max(1.0, np.log1p(abs(match["Home Goals"] - match["Away Goals"])) * 2.2)
-        change = k_factor * margin * (actual_home - expected_home)
-        ratings[home] += change
-        ratings[away] -= change
-        history.append({"Date": match["Date"], "Home Team": home, "Away Team": away, "Home Elo": before[home], "Away Elo": before[away]})
-    return ratings, pd.DataFrame(history)
-
-
-def power_rankings(matches):
-    ratings, _ = elo_ratings(matches)
-    rows = []
-    for team in sorted(ratings):
-        summary = team_summary(matches, team)
-        # Elo is the anchor; performance and goal difference make small samples legible.
-        score = 0.65 * ratings[team] + 0.25 * (summary["points_per_game"] / 3 * 2000) + 0.10 * (1500 + summary["goal_diff"] * 18)
-        rows.append({"Team": team, "Power score": round(score / 10, 1), "Elo": round(ratings[team]), **summary})
-    return pd.DataFrame(rows).sort_values(["Power score", "Elo"], ascending=False).reset_index(drop=True)
-
-
-def strength_index(row):
-    # A transparent, capped index: results (40%), chance creation proxy (25%), defence (20%), Elo (15%).
-    attack = min(row["goals_per_game"] / 3, 1)
-    defence = max(0, 1 - row["conceded_per_game"] / 3)
-    form = row["points_per_game"] / 3
-    elo = np.clip((row["Elo"] - 1200) / 500, 0, 1)
-    return round(100 * (0.40 * form + 0.25 * attack + 0.20 * defence + 0.15 * elo), 1)
-
-
-def match_probability(team_a, team_b, ratings):
-    difference = ratings[team_a] - ratings[team_b]
-    win_a = 1 / (1 + 10 ** (-difference / 400))
-    return float(np.clip(win_a, 0.08, 0.92))
-
-
-def simulate_tournament(teams, ratings, simulations=2000):
-    rng = np.random.default_rng(42)
-    champions = {team: 0 for team in teams}
-    finalist = {team: 0 for team in teams}
-    for _ in range(simulations):
-        field = list(teams)
-        rng.shuffle(field)
-        while len(field) > 1:
-            winners = []
-            for index in range(0, len(field), 2):
-                a, b = field[index], field[index + 1]
-                winners.append(a if rng.random() < match_probability(a, b, ratings) else b)
-            if len(winners) == 2:
-                finalist[winners[0]] += 1
-                finalist[winners[1]] += 1
-            field = winners
-        champions[field[0]] += 1
-    result = pd.DataFrame({"Team": list(champions), "Champion probability": [champions[t] / simulations * 100 for t in champions], "Final probability": [finalist[t] / simulations * 100 for t in champions]})
-    return result.sort_values("Champion probability", ascending=False).reset_index(drop=True)
-
 
 matches = load_matches()
 teams = sorted(set(matches["Home Team"]).union(matches["Away Team"]))
@@ -630,7 +528,7 @@ with sim_col:
     simulations = st.slider("Simulations", 500, 10000, 2000, step=500)
 field = rankings.head(min(field_size, len(rankings)))["Team"].tolist()
 if len(field) >= 2 and len(field) % 2 == 0:
-    sim_result = simulate_tournament(field, elos, simulations)
+    sim_result = simulate_tournament(field, matches, elos, simulations=simulations, neutral=True, seed=42)
     st.caption(
     f"Based on the top {len(field)} power-ranked teams. "
     "Neutral knockout matches use no home advantage."
