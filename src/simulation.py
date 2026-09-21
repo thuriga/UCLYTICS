@@ -112,34 +112,61 @@ def simulate_tournament(
             return matchup_rates[(team_a, team_b)]
         return matchup_rates[(team_b, team_a)][::-1]
 
-    # Vectorized Monte Carlo: simulate every match in a round at once.
-    # This avoids Python-level loops over every simulated match.
-    for _ in range(simulations):
-        field = list(teams)
-        rng.shuffle(field)
+    # Fully vectorized Monte Carlo across all simulations.
+    # Each row of the field array represents one simulated tournament.
+    team_list = list(teams)
+    team_index = {team: i for i, team in enumerate(team_list)}
+    n = len(team_list)
 
-        while len(field) > 1:
-            winners = []
+    rate_a = np.zeros((n, n), dtype=float)
+    rate_b = np.zeros((n, n), dtype=float)
+    for i, team_a in enumerate(team_list):
+        for j, team_b in enumerate(team_list):
+            if i == j:
+                continue
+            a_rate, b_rate = get_rates(team_a, team_b)
+            rate_a[i, j] = a_rate
+            rate_b[i, j] = b_rate
 
-            for index in range(0, len(field), 2):
-                team_a, team_b = field[index], field[index + 1]
-                a_rate, b_rate = get_rates(team_a, team_b)
-                a_goals = rng.poisson(a_rate)
-                b_goals = rng.poisson(b_rate)
+    elo_array = np.array([ratings[team] for team in team_list], dtype=float)
+    fields = np.tile(np.arange(n), (simulations, 1))
 
-                if a_goals == b_goals:
-                    winner = _elo_tiebreak_winner(team_a, team_b, ratings, rng)
-                else:
-                    winner = team_a if a_goals > b_goals else team_b
-                winners.append(winner)
+    # Shuffle each simulated bracket independently.
+    for row in fields:
+        rng.shuffle(row)
 
-            if len(winners) == 2:
-                finalists[winners[0]] += 1
-                finalists[winners[1]] += 1
+    while fields.shape[1] > 1:
+        a = fields[:, 0::2]
+        b = fields[:, 1::2]
+        a_rates = rate_a[a, b]
+        b_rates = rate_b[a, b]
 
-            field = winners
+        a_goals = rng.poisson(a_rates)
+        b_goals = rng.poisson(b_rates)
 
-        champions[field[0]] += 1
+        a_wins = a_goals > b_goals
+        b_wins = a_goals < b_goals
+        ties = ~(a_wins | b_wins)
+
+        winners = np.where(a_wins, a, b).astype(int)
+
+        if np.any(ties):
+            a_elo = elo_array[a[ties]]
+            b_elo = elo_array[b[ties]]
+            p_a = 1 / (1 + 10 ** ((b_elo - a_elo) / 400))
+            winners[ties] = np.where(rng.random(np.count_nonzero(ties)) < p_a, a[ties], b[ties])
+
+        if winners.shape[1] == 2:
+            finalist_ids = winners
+            finalists.update({team: 0 for team in []})
+            for team_id, count in zip(*np.unique(finalist_ids, return_counts=True)):
+                finalists[team_list[int(team_id)]] += int(count)
+
+        fields = winners
+
+    champion_ids, champion_counts = np.unique(fields[:, 0], return_counts=True)
+    for team_id, count in zip(champion_ids, champion_counts):
+        champions[team_list[int(team_id)]] += int(count)
 
     result = pd.DataFrame({
         "Team": list(teams),
