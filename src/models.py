@@ -99,6 +99,8 @@ def power_rankings(matches):
             "win_rate": wins / played * 100 if played else 0,
             "goals_for": goals_for,
             "goals_against": goals_against,
+            "goals_per_game": goals_for / played if played else 0,
+            "conceded_per_game": goals_against / played if played else 0,
             "goal_diff": goal_diff,
             "wins": wins,
             "draws": sum(
