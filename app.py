@@ -6,7 +6,8 @@ import streamlit as st
 
 from src.analytics import team_matches, team_summary, strength_index
 from src.data import load_matches
-from src.models import elo_ratings, power_rankings, simulate_tournament
+from src.models import elo_ratings, power_rankings
+from src.simulation import simulate_tournament
 st.set_page_config(
     page_title="UCLytics | Team Intelligence",
     page_icon="◈",
