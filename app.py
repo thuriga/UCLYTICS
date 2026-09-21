@@ -510,79 +510,64 @@ st.dataframe(
     height=520
 )
 
-st.markdown("## Tournament simulator")
 
+st.markdown("## Tournament simulator")
 st.caption(
-    "Test how the strongest teams perform across "
-    "repeated simulated knockout tournaments."
+    "Run a Monte Carlo knockout simulation using the top power-ranked teams. "
+    "The simulation is optional so the match log remains available immediately."
 )
 
-@st.cache_data(show_spinner=False)
-def run_cached_simulation(field_tuple, matches, ratings_tuple, simulations):
-    ratings = dict(ratings_tuple)
-    return simulate_tournament(
-        list(field_tuple),
-        matches,
-        ratings,
-        simulations=simulations,
-        neutral=True,
-        seed=42,
-    )
+with st.expander("Open tournament simulator", expanded=False):
+    sim_col, _ = st.columns([1, 2])
+    with sim_col:
+        field_size = st.select_slider(
+            "Field size",
+            options=[4, 8, 16],
+            value=16 if len(teams) >= 16 else 8
+        )
+        simulations = st.slider(
+            "Simulations",
+            250,
+            5000,
+            1000,
+            step=250
+        )
 
-sim_col, _ = st.columns([1, 2])
-with sim_col:
-    field_size = st.select_slider(
-        "Field size",
-        options=[4, 8, 16],
-        value=min(16, 2 ** int(np.floor(np.log2(len(teams)))))
-    )
-    simulations = st.slider(
-        "Simulations",
-        500,
-        5000,
-        1000,
-        step=500
-    )
+    field = rankings.head(field_size)["Team"].tolist()
 
-field = rankings.head(min(field_size, len(rankings)))["Team"].tolist()
-
-if len(field) >= 2 and len(field) % 2 == 0:
     st.caption(
         f"Based on the top {len(field)} power-ranked teams. "
         "Neutral knockout matches use no home advantage."
     )
 
-    run_simulation = st.button(
-        "Run simulation",
-        type="primary"
-    )
+    run_simulation = st.button("Run simulation", type="primary")
 
-    if run_simulation or "sim_result" not in st.session_state:
+    if run_simulation:
         with st.spinner(f"Running {simulations:,} simulations..."):
-            st.session_state.sim_result = run_cached_simulation(
-                tuple(field),
+            sim_result = simulate_tournament(
+                field,
                 matches,
-                tuple(sorted(elos.items())),
-                simulations,
+                elos,
+                simulations=simulations,
+                neutral=True,
+                seed=42,
             )
 
-    sim_result = st.session_state.sim_result
-
-    st.dataframe(
-        sim_result,
-        hide_index=True,
-        use_container_width=True,
-        column_config={
-            "Champion probability": st.column_config.ProgressColumn(
-                format="%.1f%%", min_value=0, max_value=100
-            ),
-            "Final probability": st.column_config.ProgressColumn(
-                format="%.1f%%", min_value=0, max_value=100
-            ),
-        },
-    )
-else:
-    st.info("There are not enough teams for a tournament simulation.")
+        st.dataframe(
+            sim_result,
+            hide_index=True,
+            use_container_width=True,
+            column_config={
+                "Champion probability": st.column_config.ProgressColumn(
+                    format="%.1f%%", min_value=0, max_value=100
+                ),
+                "Final probability": st.column_config.ProgressColumn(
+                    format="%.1f%%", min_value=0, max_value=100
+                ),
+            },
+        )
+    else:
+        st.info("Choose the field size and number of simulations, then click Run simulation.")
 
 st.markdown("## Match log")
 display_games = games[["Date", "Opponent", "Venue", "Score", "Result", "Goals For", "Goals Against"]].copy()
