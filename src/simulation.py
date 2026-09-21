@@ -158,7 +158,6 @@ def simulate_tournament(
 
         if winners.shape[1] == 2:
             finalist_ids = winners
-            finalists.update({team: 0 for team in []})
             for team_id, count in zip(*np.unique(finalist_ids, return_counts=True)):
                 finalists[team_list[int(team_id)]] += int(count)
 
