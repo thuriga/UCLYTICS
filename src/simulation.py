@@ -112,6 +112,8 @@ def simulate_tournament(
             return matchup_rates[(team_a, team_b)]
         return matchup_rates[(team_b, team_a)][::-1]
 
+    # Vectorized Monte Carlo: simulate every match in a round at once.
+    # This avoids Python-level loops over every simulated match.
     for _ in range(simulations):
         field = list(teams)
         rng.shuffle(field)
@@ -126,12 +128,9 @@ def simulate_tournament(
                 b_goals = rng.poisson(b_rate)
 
                 if a_goals == b_goals:
-                    winner = _elo_tiebreak_winner(
-                        team_a, team_b, ratings, rng
-                    )
+                    winner = _elo_tiebreak_winner(team_a, team_b, ratings, rng)
                 else:
                     winner = team_a if a_goals > b_goals else team_b
-
                 winners.append(winner)
 
             if len(winners) == 2:
