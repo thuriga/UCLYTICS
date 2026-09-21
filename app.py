@@ -1,32 +1,18 @@
-import os
-
 import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
-
+from src.analytics import team_matches, team_summary, strength_index
+from src.data import load_matches
+from src.models import elo_ratings, power_rankings, simulate_tournament
 st.set_page_config(
     page_title="UCLytics | Team Intelligence",
     page_icon="◈",
     layout="wide",
     initial_sidebar_state="expanded",
 )
-
-
-@st.cache_data
-def load_matches():
-    data = pd.read_csv(os.path.join(os.path.dirname(__file__), "data.csv"))
-    data.columns = [column.strip() for column in data.columns]
-    # Keep the app compatible with the original score-column naming.
-    data = data.rename(columns={"Home Score": "Home Goals", "Away Score": "Away Goals"})
-    data["Date"] = pd.to_datetime(data["Date"], dayfirst=True, errors="coerce")
-    for column in ["Home Goals", "Away Goals"]:
-        data[column] = pd.to_numeric(data[column], errors="coerce").fillna(0).astype(int)
-    data["Score"] = data["Home Goals"].astype(str) + " - " + data["Away Goals"].astype(str)
-    return data.dropna(subset=["Date"]).sort_values("Date").reset_index(drop=True)
-
 
 
 matches = load_matches()
