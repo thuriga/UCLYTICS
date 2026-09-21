@@ -443,7 +443,14 @@ st.caption(
 metric_labels = ["Win rate", "Goals / match", "Points / match", "Clean-sheet %", "Strength index"]
 def compare_value(team, metric):
     row = rankings.loc[rankings["Team"] == team].iloc[0]
-    return {"Win rate": row["win_rate"], "Goals / match": row["goals_per_game"], "Points / match": row["points_per_game"], "Clean-sheet %": row["clean_sheets"] / row["played"] * 100, "Strength index": row["Strength index"]}[metric]
+    values = {
+        "Win rate": row["win_rate"],
+        "Goals / match": row["goals_for"] / row["played"] if row["played"] else 0,
+        "Points / match": row["points_per_game"],
+        "Clean-sheet %": row.get("clean_sheets", 0) / row["played"] * 100 if row["played"] else 0,
+        "Strength index": row["Strength index"],
+    }
+    return values[metric]
 compare_data = pd.DataFrame([(metric, team, compare_value(team, metric)) for metric in metric_labels for team in [selected_team, compare_team]], columns=["Metric", "Team", "Value"])
 fig = px.bar(
     compare_data,
